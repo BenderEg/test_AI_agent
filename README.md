@@ -13,6 +13,7 @@ The system implements a Retrieval-Augmented Generation (RAG) pipeline:
 - Generate answers using a local LLM via Ollama
 
 ⚙️ Tech Stack
+
 FastAPI — API layer  
 Qdrant — vector storage  
 Ollama — local LLM inference  
