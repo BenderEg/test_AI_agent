@@ -27,21 +27,16 @@ Python — core logic
 
 🏗 Architecture
 
-GitHub Repo (HTTP)
-        ↓
-   Parser (Python files)
-        ↓
-     Chunking
-        ↓
-    Embeddings
-        ↓
-     Qdrant
-        ↓
-   Retrieval (query)
-        ↓
-     Ollama (LLM)
-        ↓
-      Response
+```mermaid
+flowchart TD
+    A[GitHub Repo (HTTP)] --> B[Parser (Python files)]
+    B --> C[Chunking]
+    C --> D[Embeddings]
+    D --> E[Qdrant]
+    E --> F[Retrieval]
+    F --> G[Ollama (LLM)]
+    G --> H[Response]
+```
 
 
 🚀 Getting Started
