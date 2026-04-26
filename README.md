@@ -59,4 +59,5 @@ Do not forget to: make pull-model (the model you are actually planning to use an
 📌 Future Improvements
 
 LLM is slow (and sukcs by the way), only python files are ingested.
+The logic of repo versions tracking is not covered (but may be).
 The purpose is only to demostrate core idea of specific context querying.
