@@ -30,13 +30,13 @@ class Settings(BaseSettings):
     @property
     def is_debug(self) -> bool:
         return self.ENVIRONMENT == "dev"
-    
+
     @property
-    def qdrant_url(self) -> bool:
+    def qdrant_url(self) -> str:
         return f"http://{self.QDRANT_HOST}:{self.QDRANT_PORT}"
-    
+
     @property
-    def llm_url(self) -> bool:
+    def llm_url(self) -> str:
         return f"http://{self.LLM_HOST}:{self.LLM_PORT}"
 
 

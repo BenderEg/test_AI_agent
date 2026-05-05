@@ -1,11 +1,10 @@
 from http import HTTPStatus
 
-from fastapi import APIRouter, Depends, HTTPException, status, Query
-
-from src.app.utils.logger import get_logger
+from fastapi import APIRouter, HTTPException, Query, status
 from src.app.configs.di import github_parser, llm_adapter, vector_adapter
 from src.app.schemas.repo import AskQueryInfo, IngestRepo, QueryInfo, QueryResponseItem
 from src.app.use_cases.base import ask, ingest, query
+from src.app.utils.logger import get_logger
 
 logger = get_logger(__name__)
 
@@ -62,4 +61,4 @@ async def ingest_repo(
         raise HTTPException(
             status_code=status.HTTP_404_NOT_FOUND,
             detail=str(err),
-        )
+        ) from err

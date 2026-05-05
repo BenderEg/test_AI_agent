@@ -2,12 +2,10 @@ from typing import Annotated
 
 from aiohttp import ClientSession
 from fastapi import Depends, Request
-
-from src.app.adapters.http_session import get_aiohttp_session
 from src.app.adapters.github_parser import GitHubParser
+from src.app.adapters.http_session import get_aiohttp_session
 from src.app.adapters.llm import OllamaAdapter
 from src.app.adapters.vectored import QdrantAdapter
-from src.app.utils.embedder import embed
 
 
 def get_github_parser(
@@ -15,8 +13,10 @@ def get_github_parser(
 ) -> GitHubParser:
     return GitHubParser(session=session)
 
+
 def get_vector_adapter(request: Request) -> QdrantAdapter:
     return request.app.state.vector_adapter
+
 
 def get_llm_adapter(
     session: ClientSession = Depends(get_aiohttp_session),

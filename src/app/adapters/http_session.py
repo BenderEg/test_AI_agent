@@ -22,4 +22,5 @@ async def init_client_session() -> None:
 
 async def close_client_session() -> None:
     global session
-    await session.close()
+    if session is not None:
+        await session.close()

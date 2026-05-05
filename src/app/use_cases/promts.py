@@ -1,8 +1,6 @@
 def build_context(results: list[dict]):
-    return "\n\n".join(
-        f"{r['symbol']}:\n{r['code']}"
-        for r in results
-    )
+    return "\n\n".join(f"{r['symbol']}:\n{r['code']}" for r in results)
+
 
 def build_prompt(query: str, context: str):
     return f"""
@@ -20,6 +18,7 @@ def build_prompt(query: str, context: str):
         Do not use irrelevant context to reply.
         if possible provide relevant code examples from context.
     """
+
 
 def rewrite_prompt(query: str):
     return f"""

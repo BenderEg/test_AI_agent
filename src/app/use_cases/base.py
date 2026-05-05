@@ -1,10 +1,9 @@
+from src.app.adapters.github_parser import GitHubParser
 from src.app.adapters.llm import BaseLLMAdapter
 from src.app.adapters.vectored import BaseVectorAdapter
-from src.app.adapters.github_parser import GitHubParser
 from src.app.schemas.repo import AskQueryInfo, IngestRepo, QueryInfo
-
-from src.app.utils.utils import gen_repo_id
 from src.app.use_cases.promts import build_context, build_prompt, rewrite_prompt
+from src.app.utils.utils import gen_repo_id
 
 
 async def ingest(
@@ -23,22 +22,24 @@ async def ingest(
             owner=data.owner,
             repo=data.repo,
             branch=data.branch,
-        )
+        ),
     )
 
 
 async def query(data: QueryInfo, vector_adapter: BaseVectorAdapter) -> list:
     repo_id = None
-    if data.repo:
+    if data.repo and data.owner and data.branch:
         repo_id = gen_repo_id(
             owner=data.owner,
             repo=data.repo,
             branch=data.branch,
         )
-    return await vector_adapter.search(data.query, repo_id, data.limit)
+    return await vector_adapter.search(data.query, repo_id, data.limit or 5)
 
 
-async def ask(data: AskQueryInfo, vector_adapter: BaseVectorAdapter, llm_adapter: BaseLLMAdapter) -> str:
+async def ask(
+    data: AskQueryInfo, vector_adapter: BaseVectorAdapter, llm_adapter: BaseLLMAdapter
+) -> str:
     if data.adapt_user_query:
         promt = rewrite_prompt(data.query)
         data.query = await llm_adapter.generate_response(promt)

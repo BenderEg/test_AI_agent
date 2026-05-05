@@ -1,7 +1,6 @@
 from contextlib import asynccontextmanager
 
 from fastapi import FastAPI
-
 from src.app.adapters.http_session import close_client_session, init_client_session
 from src.app.adapters.vectored import QdrantAdapter
 from src.app.api import router
@@ -25,7 +24,7 @@ async def lifespan(app: FastAPI):
     await vector_adapter.on_shut_down()
     await close_client_session()
 
-    
+
 app = FastAPI(
     title="Github repo rapser API",
     version="0.1.0",

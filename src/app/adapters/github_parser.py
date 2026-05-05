@@ -1,18 +1,14 @@
 import asyncio
 import base64
- 
-from typing import AsyncGenerator, Optional
+from collections.abc import AsyncGenerator
 
 import backoff
-
 from aiohttp import ClientSession
-
 from src.app.configs.settings import settings
 from src.app.utils.utils import is_py_file
 
 
 class GitHubParser:
-
     def __init__(
         self,
         session: ClientSession,
@@ -24,7 +20,7 @@ class GitHubParser:
         return {
             "Authorization": f"Bearer {settings.GITHUB_TOKEN}",
         }
-        
+
     @backoff.on_exception(
         wait_gen=backoff.expo,
         exception=(ValueError, asyncio.TimeoutError),
@@ -36,19 +32,19 @@ class GitHubParser:
         file_path: str,
         owner: str,
         repo: str,
-    ) -> tuple[str, Optional[str]]:
+    ) -> tuple[str, str | None]:
         async with sem:
             content_url = f"https://api.github.com/repos/{owner}/{repo}/contents/{file_path}"
             async with self.session.get(url=content_url, headers=self.headers) as resp:
                 if resp.status > 404:
-                    raise ValueError(f"Status code in worker greater than 404")
+                    raise ValueError("Status code in worker greater than 404")
                 body = await resp.json()
                 if "content" in body:
                     content = base64.b64decode(body["content"]).decode("utf-8", errors="ignore")
                     return file_path, content
                 else:
                     return file_path, None
-    
+
     async def parse_repo_items(
         self,
         repo_items: list,
@@ -65,15 +61,16 @@ class GitHubParser:
                     owner=owner,
                     repo=repo,
                 )
-            ) for i in python_files
+            )
+            for i in python_files
         ]
         for task in asyncio.as_completed(tasks):
             try:
                 result = await task
                 yield result
-            except Exception as err:
+            except Exception:
                 yield (None, None)
-    
+
     async def get_repo_content(
         self,
         owner: str,
@@ -85,7 +82,7 @@ class GitHubParser:
             headers=self.headers,
         ) as resp:
             if resp.status != 200:
-                raise ValueError(f"Repo not found")
+                raise ValueError("Repo not found")
             body = await resp.json()
             repo_items = body.get("tree", [])
             async for file_path, content in self.parse_repo_items(

@@ -1,23 +1,24 @@
 import asyncio
-
-from typing import AsyncGenerator, Callable
+from collections.abc import AsyncGenerator, Callable
 from uuid import uuid4
 
 from qdrant_client import QdrantClient
-from qdrant_client.models import Distance, PointStruct, VectorParams
-
+from qdrant_client.models import (
+    Distance,
+    FieldCondition,
+    Filter,
+    MatchValue,
+    PointStruct,
+    VectorParams,
+)
 from src.app.configs.settings import settings
-from src.app.schemas.repo import QueryInfo
 from src.app.utils.utils import chunk_python_file_content
 
 
 class BaseVectorAdapter:
+    async def on_start_up(self) -> None: ...
 
-    async def on_start_up(self) -> None:
-        ...
-
-    async def on_shut_down(self) -> None:
-        ...
+    async def on_shut_down(self) -> None: ...
 
     async def upsert_content(self, content_gen: AsyncGenerator, repo_id: str) -> None:
         raise NotImplementedError
@@ -27,7 +28,6 @@ class BaseVectorAdapter:
 
 
 class QdrantAdapter(BaseVectorAdapter):
-
     def __init__(self, embeder: Callable):
         self.client = QdrantClient(url=settings.qdrant_url)
         self.embeder = embeder
@@ -53,11 +53,9 @@ class QdrantAdapter(BaseVectorAdapter):
     async def search(self, query: str, repo_id: str | None, limit: int = 5) -> list[dict]:
         query_filter = None
         if repo_id:
-            query_filter = {
-                "must": [
-                    {"key": "repo_id", "match": {"value": repo_id}}
-                ]
-            }
+            query_filter = Filter(
+                must=[FieldCondition(key="repo_id", match=MatchValue(value=repo_id))]
+            )
         results = self.client.query_points(
             collection_name=settings.QDRANT_COLLECTION_NAME,
             query=self.embeder(query),
@@ -69,9 +67,10 @@ class QdrantAdapter(BaseVectorAdapter):
             {
                 "file": point.payload["file_path"],
                 "symbol": point.payload["symbol"],
-                "code": point.payload["text"]
+                "code": point.payload["text"],
             }
             for point in results.points
+            if point.payload is not None
         ]
 
     async def upsert_content(self, content_gen: AsyncGenerator, repo_id: str) -> None:
@@ -90,8 +89,8 @@ class QdrantAdapter(BaseVectorAdapter):
                             "file_path": file_path,
                             "symbol": chunk["symbol"],
                             "type": chunk["type"],
-                            "text": chunk["text"]
-                        }
+                            "text": chunk["text"],
+                        },
                     )
                 )
         await asyncio.to_thread(
