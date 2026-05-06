@@ -1,4 +1,5 @@
 import logging
+from typing import Any
 
 from sentence_transformers import CrossEncoder
 from src.app.configs.settings import settings
@@ -26,8 +27,8 @@ def rerank(query: str, results: list[dict], top_k: int) -> list[dict]:
     if not results:
         return results
     model = _get_model()
-    pairs = [(query, r["code"]) for r in results]
-    scores = model.predict(pairs)  # type: ignore[arg-type]
+    pairs: Any = [(query, r["code"]) for r in results]
+    scores = model.predict(pairs)
     ranked = sorted(zip(scores, results, strict=False), key=lambda x: x[0], reverse=True)
     top = ranked[:top_k]
     logger.info("rerank candidates=%d top_k=%d", len(results), top_k)
