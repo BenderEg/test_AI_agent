@@ -34,7 +34,7 @@ async def query(data: QueryInfo, vector_adapter: BaseVectorAdapter) -> list:
             repo=data.repo,
             branch=data.branch,
         )
-    return await vector_adapter.search(data.query, repo_id, data.limit or 5)
+    return await vector_adapter.search(data.query, repo_id, data.limit or 5, data.score_threshold)
 
 
 async def ask(

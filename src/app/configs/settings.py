@@ -25,7 +25,7 @@ class Settings(BaseSettings):
     QDRANT_COLLECTION_NAME: str = "codebase"
     LLM_HOST: str = "qdrant"
     LLM_PORT: int = 11434
-    LLM_MODEL: str = "ollama"
+    LLM_MODEL: str = "llama3"
 
     @property
     def is_debug(self) -> bool:

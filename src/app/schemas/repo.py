@@ -10,6 +10,7 @@ class IngestRepo(BaseModel):
 class QueryInfo(BaseModel):
     query: str
     limit: int | None = 3
+    score_threshold: float | None = 0.3
     owner: str | None = None
     repo: str | None = None
     branch: str | None = "master"

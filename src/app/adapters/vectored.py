@@ -23,7 +23,9 @@ class BaseVectorAdapter:
     async def upsert_content(self, content_gen: AsyncGenerator, repo_id: str) -> None:
         raise NotImplementedError
 
-    async def search(self, query: str, repo_id: str | None, limit: int = 5) -> list[dict]:
+    async def search(
+        self, query: str, repo_id: str | None, limit: int = 5, score_threshold: float | None = None
+    ) -> list[dict]:
         raise NotImplementedError
 
 
@@ -50,7 +52,9 @@ class QdrantAdapter(BaseVectorAdapter):
             collection_name=settings.QDRANT_COLLECTION_NAME,
         )
 
-    async def search(self, query: str, repo_id: str | None, limit: int = 5) -> list[dict]:
+    async def search(
+        self, query: str, repo_id: str | None, limit: int = 5, score_threshold: float | None = None
+    ) -> list[dict]:
         query_filter = None
         if repo_id:
             query_filter = Filter(
@@ -61,6 +65,7 @@ class QdrantAdapter(BaseVectorAdapter):
             query=self.embeder(query),
             limit=limit,
             query_filter=query_filter,
+            score_threshold=score_threshold,
         )
 
         return [
