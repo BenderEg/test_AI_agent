@@ -1,5 +1,7 @@
 # AI Repo Assistant — RAG over GitHub Repositories
 
+![CI](https://github.com/BenderEg/test_AI_agent/actions/workflows/ci.yml/badge.svg)
+
 An AI-powered assistant that ingests GitHub repositories, stores code embeddings in a vector database, and enables contextual Q&A over a codebase using a local LLM — fully local, no data leaves your machine.
 
 ---
@@ -131,6 +133,11 @@ All settings are in `.env` (see `.env.example`):
 ## Development
 
 ```bash
-make check     # ruff lint + mypy type check
+make check     # ruff lint + mypy type check + pytest
 make format    # auto-format with ruff
+make test      # run pytest only
 ```
+
+### CI
+
+GitHub Actions runs `make check` (lint → typecheck → tests) on every push and pull request to `master`. The workflow installs only `requirements-dev.txt` — no runtime dependencies — since tests cover pure-Python utilities and mypy is configured with `ignore_missing_imports = true`.
