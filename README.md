@@ -111,6 +111,18 @@ Two-stage retrieval + LLM answer generation.
 
 - `adapt_user_query=true` — rewrites the query via Ollama before retrieval
 
+Response:
+```json
+{ "answer": "...", "context_found": true }
+```
+
+- `context_found: false` — no matching code was found in the vector DB; the LLM answered from general knowledge without a RAG context constraint
+
+### `GET /api/v1/repo_parser/ask/stream`
+Same as `/ask` but streams tokens as they are generated (use `curl -N`).
+
+The `X-Context-Found: true/false` response header signals whether vector DB results were used.
+
 ### `GET /api/v1/health` / `GET /api/v1/readiness`
 Liveness and readiness probes (readiness checks Qdrant connectivity).
 

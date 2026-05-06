@@ -45,3 +45,4 @@ class QueryResponse(BaseModel):
 
 class AskResponse(BaseModel):
     answer: str
+    context_found: bool

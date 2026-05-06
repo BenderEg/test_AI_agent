@@ -34,8 +34,8 @@ async def ask_llm(
     vector_adapter: vector_adapter,
     data: AskQueryInfo = Query(),
 ) -> AskResponse:
-    answer = await ask(data, vector_adapter, llm_adapter)
-    return AskResponse(answer=answer)
+    answer, context_found = await ask(data, vector_adapter, llm_adapter)
+    return AskResponse(answer=answer, context_found=context_found)
 
 
 @router.get(
@@ -49,11 +49,17 @@ async def ask_llm_stream(
     vector_adapter: vector_adapter,
     data: AskQueryInfo = Query(),
 ) -> StreamingResponse:
+    stream, context_found = await ask_stream(data, vector_adapter, llm_adapter)
+
     async def token_gen() -> AsyncGenerator[str, None]:
-        async for token in await ask_stream(data, vector_adapter, llm_adapter):
+        async for token in stream:
             yield token
 
-    return StreamingResponse(token_gen(), media_type="text/plain")
+    return StreamingResponse(
+        token_gen(),
+        media_type="text/plain",
+        headers={"X-Context-Found": str(context_found).lower()},
+    )
 
 
 @router.get(

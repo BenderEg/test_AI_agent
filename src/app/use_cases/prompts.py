@@ -38,6 +38,20 @@ def build_prompt(query: str, context: str, truncated: bool = False) -> str:
     """
 
 
+def build_raw_prompt(query: str) -> str:
+    return f"""
+        You are a senior backend engineer.
+
+        No relevant code was found in the knowledge base for this question.
+        Answer based on your general knowledge.
+
+        Question:
+        {query}
+
+        Answer clearly and concisely.
+    """
+
+
 def rewrite_prompt(query: str) -> str:
     return f"""
         You are helping to search a codebase.
