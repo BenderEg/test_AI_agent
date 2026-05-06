@@ -23,9 +23,17 @@ class Settings(BaseSettings):
     QDRANT_HOST: str = "qdrant"
     QDRANT_PORT: int = 6333
     QDRANT_COLLECTION_NAME: str = "codebase"
-    LLM_HOST: str = "qdrant"
+    LLM_HOST: str = "ollama"
     LLM_PORT: int = 11434
     LLM_MODEL: str = "llama3"
+
+    # Two-stage retrieval: vector search (bi-encoder) → Cross-Encoder reranking
+    RERANKER_ENABLED: bool = True
+    RERANKER_MODEL: str = "cross-encoder/ms-marco-MiniLM-L-6-v2"
+
+    # aiohttp session timeouts (seconds)
+    HTTP_TIMEOUT_TOTAL: int = 30
+    HTTP_TIMEOUT_CONNECT: int = 5
 
     @property
     def is_debug(self) -> bool:

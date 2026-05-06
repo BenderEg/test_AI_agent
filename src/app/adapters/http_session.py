@@ -1,4 +1,5 @@
 from aiohttp import ClientSession, ClientTimeout
+from src.app.configs.settings import settings
 
 session: ClientSession | None = None
 
@@ -15,8 +16,10 @@ async def get_aiohttp_session() -> ClientSession:
 
 async def init_client_session() -> None:
     global session
+    # Per-call overrides (e.g. OllamaAdapter's 150s timeout) take precedence over this
+    # session-level default — aiohttp uses the per-request timeout when specified.
     session = ClientSession(
-        timeout=ClientTimeout(total=2),
+        timeout=ClientTimeout(total=settings.HTTP_TIMEOUT_TOTAL, connect=settings.HTTP_TIMEOUT_CONNECT),
     )
 
 

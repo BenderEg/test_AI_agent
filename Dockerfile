@@ -26,4 +26,7 @@ USER appuser
 ARG PORT=8000
 EXPOSE ${PORT}
 
+HEALTHCHECK --interval=30s --timeout=5s --start-period=30s --retries=3 \
+  CMD curl -f http://localhost:${PORT:-8000}/api/v1/health || exit 1
+
 CMD ["./entrypoint.sh"]

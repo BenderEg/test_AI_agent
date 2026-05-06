@@ -1,64 +1,136 @@
-🚀 AI Repo Assistant (RAG over GitHub Repositories)
+# AI Repo Assistant — RAG over GitHub Repositories
 
-This project is an AI-powered agent that ingests GitHub repositories, stores code embeddings in a vector database, and enables contextual Q&A over the codebase using a local LLM.
+An AI-powered assistant that ingests GitHub repositories, stores code embeddings in a vector database, and enables contextual Q&A over a codebase using a local LLM — fully local, no data leaves your machine.
 
-🧠 Overview
+---
 
-The system implements a Retrieval-Augmented Generation (RAG) pipeline:
+## Overview
 
-- Parse a public GitHub repository via HTTP
-- Extract Python files and split them into chunks
-- Store chunks in Qdrant (vector database)
-- Retrieve relevant chunks based on a query
-- Generate answers using a local LLM via Ollama
+The system implements a two-stage Retrieval-Augmented Generation (RAG) pipeline:
 
-⚙️ Tech Stack
+1. Fetch Python files from a GitHub repository via the GitHub API (no cloning)
+2. Parse each file with AST to extract functions and classes with full signatures
+3. Embed each chunk with `all-MiniLM-L6-v2` (SentenceTransformer) and store in Qdrant
+4. On query: retrieve candidate chunks by vector similarity (bi-encoder), then rerank with a Cross-Encoder for higher precision
+5. Build a token-aware context window and generate an answer via a local Ollama LLM
 
-FastAPI — API layer  
-Qdrant — vector storage  
-Ollama — local LLM inference  
-Python — core logic  
+---
 
-📦 Features  
-📥 GitHub repo ingestion (no cloning required)  
-✂️ Smart chunking of Python files  
-🧠 Vector search with Qdrant  
-💬 Context-aware answers using LLM  
-⚡ Fully local RAG pipeline  
+## Tech Stack
 
-🏗 Architecture
+| Component | Role |
+|-----------|------|
+| **FastAPI** | Async REST API |
+| **Qdrant** | Vector database (cosine similarity search) |
+| **Ollama** | Local LLM inference |
+| **SentenceTransformers** | Bi-encoder embeddings (`all-MiniLM-L6-v2`, 384-dim) + Cross-Encoder reranking (`ms-marco-MiniLM-L-6-v2`) |
+| **aiohttp** | Async GitHub API client |
+| **Docker Compose** | Three-service local deployment |
 
-GitHub Repo (HTTP)  
-↓  
-Parser (Python files)  
-↓  
-Chunking  
-↓  
-Embeddings  
-↓  
-Qdrant  
-↓  
-Retrieval (query)  
-↓  
-Ollama (LLM)  
-↓  
-Response
+---
 
+## Features
 
-🚀 Getting Started
+- **GitHub repo ingestion** — fetches files via GitHub API with async concurrency (semaphore=20, exponential backoff)
+- **AST-based chunking** — extracts functions and classes using `ast.unparse()` for complete signatures including type annotations, `*args`, `**kwargs`, and base classes
+- **Idempotent ingest** — point IDs are deterministic SHA256 hashes of `(repo_id, file_path, symbol)`, so re-ingesting the same repo is a no-op; `force=true` triggers a full re-index
+- **Two-stage retrieval** — vector search fetches `limit×3` candidates, a Cross-Encoder reranks them to `limit`; each result carries both `score` (cosine) and `rerank_score`
+- **Token-aware context** — context is truncated to 8 000 characters (2 000 per chunk) before being sent to the LLM, avoiding context window overflows without a tokenizer dependency
+- **Query rewriting** — optional LLM-powered query rewrite before retrieval (`adapt_user_query=true`)
+- **Observability** — structured `key=value` log lines at every pipeline stage; `/health` and `/readiness` endpoints
+- **Graceful error handling** — `VectorDBError` → 503, `LLMError` → 502, `PermanentGitHubError` (401/403) is not retried
 
-Set GITHUB_TOKEN=your_token in .env  
-To launch just use: make up-local  
-Do not forget to: make pull-model (the model you are actually planning to use and set in .env file)  
+---
 
-🔌 API Endpoints
+## Architecture
 
-/api/v1/repo_parser/query : Retrieves the most relevant chunks from Qdrant (if you provide repo, owner and branch chuks will be found inside this repo only)  
-/api/v1/repo_parser/ask : Retrieves relevant context from Qdrant and generates an answer using Ollama  
-/api/v1/repo_parser/ingest : Fetches a GitHub repository, extracts Python files, splits them into chunks, and stores them in Qdrant  
+```
+GitHub API (HTTP)
+      ↓
+GitHubParser  — async fetch, base64 decode, exponential backoff
+      ↓
+AST Chunker   — ast.unparse() signatures, module-level + class methods
+      ↓
+SentenceTransformer (bi-encoder, 384-dim)
+      ↓
+Qdrant  — deterministic point IDs, batched upsert (100 pts/batch)
+      ↓
+Vector Search  — cosine similarity, score_threshold filter
+      ↓
+Cross-Encoder  — ms-marco-MiniLM-L-6-v2 reranking
+      ↓
+Context Builder  — char-based truncation (8k chars)
+      ↓
+Ollama LLM  — local inference, 150s timeout
+      ↓
+Answer
+```
 
-📌 Future Improvements
+---
 
-LLM is slow (and sukcs by the way), only python files are ingested.  
-The logic of repo versions tracking is not covered (but may be).  
-The purpose is only to demostrate core idea of specific context querying.  
+## Getting Started
+
+```bash
+cp .env.example .env          # set GITHUB_TOKEN and optionally LLM_MODEL
+make up-local                 # start FastAPI (:8000), Qdrant (:6333), Ollama (:11434)
+make pull-model               # pull the model specified in .env (once after first start)
+```
+
+To stop: `make down-local`
+
+---
+
+## API Endpoints
+
+### `POST /api/v1/repo_parser/ingest`
+Fetches a GitHub repository, parses Python files with AST, embeds each chunk, and stores in Qdrant.
+
+```json
+{ "owner": "tiangolo", "repo": "fastapi", "branch": "master", "force": false }
+```
+
+- `force: true` — deletes existing vectors for this repo before re-indexing (handles renamed/deleted symbols)
+
+### `GET /api/v1/repo_parser/query`
+Vector-searches the index and returns matching code chunks with similarity scores.
+
+```
+?query=how does dependency injection work&owner=tiangolo&repo=fastapi&branch=master&limit=5&score_threshold=0.3
+```
+
+Response includes `items`, `total`, and `score_threshold_used`.
+
+### `GET /api/v1/repo_parser/ask`
+Two-stage retrieval + LLM answer generation.
+
+```
+?query=how does dependency injection work&owner=tiangolo&repo=fastapi&adapt_user_query=false
+```
+
+- `adapt_user_query=true` — rewrites the query via Ollama before retrieval
+
+### `GET /api/v1/health` / `GET /api/v1/readiness`
+Liveness and readiness probes (readiness checks Qdrant connectivity).
+
+---
+
+## Configuration
+
+All settings are in `.env` (see `.env.example`):
+
+| Variable | Default | Description |
+|----------|---------|-------------|
+| `GITHUB_TOKEN` | — | GitHub personal access token (required) |
+| `LLM_MODEL` | `qwen2.5-coder:1.5b` | Ollama model name |
+| `QDRANT_HOST` | `qdrant` | Qdrant service hostname |
+| `LLM_HOST` | `ollama` | Ollama service hostname |
+| `RERANKER_ENABLED` | `true` | Enable Cross-Encoder reranking |
+
+---
+
+## Development
+
+```bash
+make check     # ruff lint + mypy type check
+make format    # auto-format with ruff
+```

@@ -11,6 +11,11 @@ def setup_logging(level: str = "INFO"):
         handlers=[logging.StreamHandler(sys.stdout)],
     )
 
+    logging.getLogger("httpx").setLevel(logging.WARNING)
+    logging.getLogger("httpcore").setLevel(logging.WARNING)
+    logging.getLogger("urllib3").setLevel(logging.WARNING)
+    logging.getLogger("aiohttp").setLevel(logging.WARNING)
+
 
 def get_logger(name: str) -> logging.Logger:
     """Логгер для модуля"""
