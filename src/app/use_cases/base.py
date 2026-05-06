@@ -1,5 +1,6 @@
 import asyncio
 import logging
+from collections.abc import AsyncGenerator
 
 from src.app.adapters.github_parser import GitHubParser
 from src.app.adapters.llm import BaseLLMAdapter
@@ -42,12 +43,32 @@ async def query(data: QueryInfo, vector_adapter: BaseVectorAdapter) -> list[Quer
 async def ask(
     data: AskQueryInfo, vector_adapter: BaseVectorAdapter, llm_adapter: BaseLLMAdapter
 ) -> str:
+    prompt, truncated = await _prepare_ask_prompt(data, vector_adapter, llm_adapter)
+    if truncated:
+        logger.warning("ask context_truncated query=%r", data.query)
+    return await llm_adapter.generate_response(prompt)
+
+
+async def ask_stream(
+    data: AskQueryInfo, vector_adapter: BaseVectorAdapter, llm_adapter: BaseLLMAdapter
+) -> AsyncGenerator[str, None]:
+    prompt, truncated = await _prepare_ask_prompt(data, vector_adapter, llm_adapter)
+    if truncated:
+        logger.warning("ask_stream context_truncated query=%r", data.query)
+    return llm_adapter.generate_stream(prompt)
+
+
+async def _prepare_ask_prompt(
+    data: AskQueryInfo,
+    vector_adapter: BaseVectorAdapter,
+    llm_adapter: BaseLLMAdapter,
+) -> tuple[str, bool]:
+    """Shared setup for ask() and ask_stream(): rewrite → search → rerank → build prompt."""
     logger.info("ask adapt_query=%s query=%r", data.adapt_user_query, data.query)
     if data.adapt_user_query:
         prompt = rewrite_prompt(data.query)
         data.query = await llm_adapter.generate_response(prompt)
 
-    # Fetch a larger candidate set so the reranker has more to work with
     fetch_limit = (data.limit or 5) * 3 if settings.RERANKER_ENABLED else (data.limit or 5)
     results = await vector_adapter.search(
         data.query, _repo_id(data), fetch_limit, data.score_threshold
@@ -59,10 +80,8 @@ async def ask(
 
     items = [QueryResponseItem(**r) for r in results]
     context, truncated = build_context([r.model_dump() for r in items])
-    if truncated:
-        logger.warning("ask context_truncated query=%r", data.query)
     prompt = build_prompt(query=data.query, context=context, truncated=truncated)
-    return await llm_adapter.generate_response(prompt)
+    return prompt, truncated
 
 
 def _repo_id(data: QueryInfo) -> str | None:

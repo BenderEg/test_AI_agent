@@ -11,7 +11,7 @@ class IngestRepo(BaseModel):
 class QueryInfo(BaseModel):
     query: str
     limit: int | None = Field(default=3, ge=1, le=100)
-    score_threshold: float | None = Field(default=0.3, ge=0.0, le=1.0)
+    score_threshold: float | None = Field(default=0.2, ge=0.0, le=1.0)
     owner: str | None = Field(default=None, min_length=1)
     repo: str | None = Field(default=None, min_length=1)
     branch: str | None = "main"
