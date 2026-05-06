@@ -16,7 +16,10 @@ format:
 typecheck:
 	mypy src/
 
-check: lint typecheck
+test:
+	pytest
+
+check: lint typecheck test
 
 install-hooks:
 	cp hooks/pre-commit .git/hooks/pre-commit
